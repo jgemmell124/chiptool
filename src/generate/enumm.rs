@@ -110,13 +110,17 @@ pub fn render(opts: &super::Options, _ir: &IR, e: &Enum, path: &str) -> Result<T
 
         for val in 0..(1 << e.bit_size) {
             if let Some(f) = variants.get(&val) {
+                ident_counts.entry(f.name.clone())
+                    .and_modify(|c| *c += 1)
+                    .or_insert(1);
+            }
+        }
+
+        for val in 0..(1 << e.bit_size) {
+            if let Some(f) = variants.get(&val) {
                 let ident_name = {
-                    if ident_counts.contains_key(&f.name) {
-                        // must also increment the original identifier count
-                        let new_count = ident_counts.entry(f.name.clone())
-                            .and_modify(|c| *c += 1)
-                            .or_insert(1);
-                        format!("{}_{:x}", f.name, new_count)
+                    if ident_counts.get(&f.name).is_some_and(|c| *c > 1) {
+                        format!("{}_{:x}", f.name, f.value)
                     } else {
                         f.name.clone()
                     }
