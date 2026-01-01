@@ -24,6 +24,8 @@ impl Sanitize {
         // After sanitizing names, merge duplicate enum variants with the same name and value
         for (_, enumm) in ir.enums.iter_mut() {
             merge_duplicate_variants(enumm);
+            // rename duplicate enum variants with the same name but different values
+            rename_duplicate_variants(enumm);
         }
 
         Ok(())
@@ -71,4 +73,22 @@ fn merge_duplicate_variants(enumm: &mut crate::ir::Enum) {
     }
 
     enumm.variants = new_variants;
+}
+
+fn rename_duplicate_variants(enumm: &mut crate::ir::Enum) {
+    use std::collections::BTreeMap;
+
+    let mut name_counts: BTreeMap<String, usize> = BTreeMap::new();
+
+    for v in &enumm.variants {
+        *name_counts.entry(v.name.clone()).or_insert(0) += 1;
+    }
+
+    for v in &mut enumm.variants {
+        if name_counts.get(&v.name).is_some_and(|&c| c > 1) {
+            v.name = format!("{}_{:x}", v.name, v.value);
+            // increment new name to catch cascading name collisons
+            *name_counts.entry(v.name.clone()).or_insert(0) += 1;
+        }
+    }
 }
